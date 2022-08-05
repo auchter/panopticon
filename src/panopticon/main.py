@@ -27,6 +27,7 @@ IMAGE_CV = threading.Condition()
 IMAGE_ID = 0
 IMAGE = None
 
+CAMERAS = {}
 CAMERA_STATS = {}
 
 
@@ -82,7 +83,7 @@ def handle_new_image(image):
 
 def monitor_cameras(csv, resolution):
     all_cameras = load_cameras(csv)
-    cameras = {}
+    global CAMERAS
     for cam in all_cameras:
         url = cam["Screenshot Address"]
         cam_id = int(cam["Camera ID"])
@@ -98,10 +99,10 @@ def monitor_cameras(csv, resolution):
         if metadata is None:
             continue
         if height == resolution:
-            cameras[cam_id] = metadata
+            CAMERAS[cam_id] = metadata
 
     global CAMERA_STATS
-    for cam_id in cameras.keys():
+    for cam_id in CAMERAS.keys():
         CAMERA_STATS[cam_id] = {
             'hits': 0,
         }
@@ -109,7 +110,7 @@ def monitor_cameras(csv, resolution):
     while True:
         expired = []
         expiring = []
-        for cam_id, cam in cameras.items():
+        for cam_id, cam in CAMERAS.items():
             delta = get_delta(cam)
             if delta < 0:
                 expired.append(cam_id)
@@ -125,21 +126,21 @@ def monitor_cameras(csv, resolution):
             time.sleep(1)
             random.shuffle(expiring)
             for cam_id in expiring:
-                cam = cameras[cam_id]
+                cam = CAMERAS[cam_id]
                 metadata = request_image(cam["url"])
                 if metadata["ETag"] != cam["ETag"]:
                     seconds = get_delta(cam)
                     logging.info(
                         f"{cam['url']} etag changed! {seconds} after expiration"
                     )
-                    cameras[cam_id] = request_image(cam["url"], handle_new_image)
+                    CAMERAS[cam_id] = request_image(cam["url"], handle_new_image)
                     CAMERA_STATS[cam_id]['hits'] += 1
                     found_one = True
                     break
 
         for cam_id in expired:
-            cam = cameras[cam_id]
-            cameras[cam_id] = request_image(cam["url"])
+            cam = CAMERAS[cam_id]
+            CAMERAS[cam_id] = request_image(cam["url"])
 
         time.sleep(3)
 
@@ -181,6 +182,11 @@ def mjpeg():
 def stats():
     global CAMERA_STATS
     return json.dumps(CAMERA_STATS)
+
+@app.route("/info")
+def info():
+    global CAMERAS
+    return json.dumps(CAMERAS, default=str)
 
 def main():
     parser = argparse.ArgumentParser(description="panopticon")
