@@ -44,27 +44,31 @@ def load_cameras(csv_file):
 
 
 def request_image(url, handler=None):
-    with requests.get(url, stream=True) as r:
-        if r.status_code != 200:
-            logging.info(f"got status {r.status_code} fetching {url}")
-            return None
-        if r.headers["Content-Type"] != "image/jpeg":
-            logging.warning(f"got non-jpeg when fetching {url}")
-            return None
-        if r.headers["ETag"] == "3098b5594c26b8f0fd53420ad094f2df":
-            logging.info(f"ETag indicates camera is offline {url}")
-            return None
+    try:
+        with requests.get(url, stream=True) as r:
+            if r.status_code != 200:
+                logging.info(f"got status {r.status_code} fetching {url}")
+                return None
+            if r.headers["Content-Type"] != "image/jpeg":
+                logging.warning(f"got non-jpeg when fetching {url}")
+                return None
+            if r.headers["ETag"] == "3098b5594c26b8f0fd53420ad094f2df":
+                logging.info(f"ETag indicates camera is offline {url}")
+                return None
 
-        metadata = {}
-        metadata["url"] = url
-        metadata["ETag"] = r.headers["ETag"].strip('"')
-        for key in ["Date", "Last-Modified", "Expires"]:
-            metadata[key] = parsedate_to_datetime(r.headers[key])
+            metadata = {}
+            metadata["url"] = url
+            metadata["ETag"] = r.headers["ETag"].strip('"')
+            for key in ["Date", "Last-Modified", "Expires"]:
+                metadata[key] = parsedate_to_datetime(r.headers[key])
 
-        if handler is not None:
-            handler(r.content)
+            if handler is not None:
+                handler(r.content)
 
-        return metadata
+            return metadata
+    except Exception as e:
+        logging.error(f"tried to fetch {url}, got {e}")
+        return None
 
 
 def get_delta(camera):
@@ -128,19 +132,23 @@ def monitor_cameras(csv, resolution):
             for cam_id in expiring:
                 cam = CAMERAS[cam_id]
                 metadata = request_image(cam["url"])
-                if metadata["ETag"] != cam["ETag"]:
+                if metadata is not None and (metadata["ETag"] != cam["ETag"]):
                     seconds = get_delta(cam)
                     logging.info(
                         f"{cam['url']} etag changed! {seconds} after expiration"
                     )
-                    CAMERAS[cam_id] = request_image(cam["url"], handle_new_image)
-                    CAMERA_STATS[cam_id]['hits'] += 1
-                    found_one = True
-                    break
+                    metadata = request_image(cam["url"], handle_new_image)
+                    if metadata is not None:
+                        CAMERAS[cam_id] = metadata
+                        CAMERA_STATS[cam_id]['hits'] += 1
+                        found_one = True
+                        break
 
         for cam_id in expired:
             cam = CAMERAS[cam_id]
-            CAMERAS[cam_id] = request_image(cam["url"])
+            metadata = request_image(cam["url"])
+            if metadata is not None:
+                CAMERAS[cam_id] = metadata
 
         time.sleep(3)
 
