@@ -126,6 +126,7 @@ def monitor_cameras(csv, resolution):
                     )
                     cameras[cam_id] = request_image(cam["url"], handle_new_image)
                     found_one = True
+                    break
 
         for cam_id in expired:
             cam = cameras[cam_id]
