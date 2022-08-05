@@ -27,6 +27,8 @@ IMAGE_CV = threading.Condition()
 IMAGE_ID = 0
 IMAGE = None
 
+CAMERA_STATS = {}
+
 
 def load_cameras(csv_file):
     cam_dict = {}
@@ -98,6 +100,12 @@ def monitor_cameras(csv, resolution):
         if height == resolution:
             cameras[cam_id] = metadata
 
+    global CAMERA_STATS
+    for cam_id in cameras.keys():
+        CAMERA_STATS[cam_id] = {
+            'hits': 0,
+        }
+
     while True:
         expired = []
         expiring = []
@@ -125,6 +133,7 @@ def monitor_cameras(csv, resolution):
                         f"{cam['url']} etag changed! {seconds} after expiration"
                     )
                     cameras[cam_id] = request_image(cam["url"], handle_new_image)
+                    CAMERA_STATS[cam_id]['hits'] += 1
                     found_one = True
                     break
 
@@ -167,6 +176,11 @@ def index():
 def mjpeg():
     return Response(get_img(), mimetype="multipart/x-mixed-replace;boundary=frame")
 
+
+@app.route("/stats")
+def stats():
+    global CAMERA_STATS
+    return json.dumps(CAMERA_STATS)
 
 def main():
     parser = argparse.ArgumentParser(description="panopticon")
