@@ -87,9 +87,11 @@ def handle_new_image(image, metadata):
     global IMAGE_CV
     global IMAGE
     with IMAGE_CV:
+        cam_id = metadata['cam_id']
+        logging.info(f"setting new image to {cam_id}")
         IMAGE = image
+        CAM_ID = cam_id
         IMAGE_ID += 1
-        CAM_ID = metadata['cam_id']
         IMAGE_CV.notify_all()
 
 
