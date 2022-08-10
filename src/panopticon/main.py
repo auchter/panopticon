@@ -19,7 +19,7 @@ from PIL import Image
 from io import BytesIO
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timezone
-from flask import Flask, Response
+from flask import Flask, Response, redirect
 from gevent.pywsgi import WSGIServer
 from pathlib import Path
 
@@ -162,7 +162,11 @@ def index():
     return """
         <html>
         <head><title>panopticon</title></head>
-        <body><img src="/mjpeg" /></body>
+        <body>
+          <img src="/mjpeg" /><br/>
+          <a href="/cur/loc">show camera location</a><br/>
+          <a href="/cur/img">view just this camera</a><br/>
+        </body>
         </html>
     """
 
@@ -184,13 +188,31 @@ def mjpeg():
 
 @app.route("/stats")
 def stats():
-    global CAMERA_STATS
     return json.dumps(CAMERA_STATS)
 
 @app.route("/info")
 def info():
-    global CAMERAS
     return json.dumps(CAMERAS, default=str)
+
+
+@app.route("/cur/img")
+def cur_img():
+    url = CAMERA_INFO[CAM_ID]['Screenshot Address']
+    return redirect(url, 302)
+
+
+@app.route("/cur/loc")
+def cur_loc():
+    loc = CAMERA_INFO[CAM_ID]['Location']
+    _, lon, lat = loc.split(' ')
+    lon = lon.strip('(')
+    lat = lat.strip(')')
+
+    # https://www.openstreetmap.org/?mlat=30.2522736&mlon=-97.7486496#map=18/30.2522736/-97.7486496
+    zoom = 18
+    url = f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map={zoom}/{lat}/{lon}";
+    return redirect(url, 302)
+
 
 def main():
     parser = argparse.ArgumentParser(description="panopticon")
