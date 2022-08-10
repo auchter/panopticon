@@ -46,8 +46,9 @@ def load_cameras(csv_file):
     return cam_dict
 
 
-def request_image(url, handler=None):
+def request_image(cam_id, handler=None):
     try:
+        url = CAMERA_INFO[cam_id]['Screenshot Address']
         with requests.get(url, stream=True) as r:
             if r.status_code != 200:
                 logging.info(f"got status {r.status_code} fetching {url}")
@@ -92,15 +93,13 @@ def monitor_cameras(resolution):
     global CAMERA_INFO
     global CAMERAS
     for cam_id, cam in CAMERA_INFO.items():
-        url = cam["Screenshot Address"]
-
         height = 0
         def get_height(content, metadata):
             nonlocal height
             with Image.open(BytesIO(content)) as image:
                 height = image.height
 
-        metadata = request_image(url, get_height)
+        metadata = request_image(cam_id, get_height)
         if metadata is None:
             continue
         if height == resolution:
@@ -132,13 +131,13 @@ def monitor_cameras(resolution):
             random.shuffle(expiring)
             for cam_id in expiring:
                 cam = CAMERAS[cam_id]
-                metadata = request_image(cam["url"])
+                metadata = request_image(cam_id)
                 if metadata is not None and (metadata["ETag"] != cam["ETag"]):
                     seconds = get_delta(cam)
                     logging.info(
                         f"{cam['url']} etag changed! {seconds} after expiration"
                     )
-                    metadata = request_image(cam["url"], handle_new_image)
+                    metadata = request_image(cam_id, handle_new_image)
                     if metadata is not None:
                         CAMERAS[cam_id] = metadata
                         CAMERA_STATS[cam_id]['hits'] += 1
@@ -146,8 +145,7 @@ def monitor_cameras(resolution):
                         break
 
         for cam_id in expired:
-            cam = CAMERAS[cam_id]
-            metadata = request_image(cam["url"])
+            metadata = request_image(cam_id)
             if metadata is not None:
                 CAMERAS[cam_id] = metadata
 
