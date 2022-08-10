@@ -63,7 +63,7 @@ def request_image(url, handler=None):
                 metadata[key] = parsedate_to_datetime(r.headers[key])
 
             if handler is not None:
-                handler(r.content)
+                handler(r.content, metadata)
 
             return metadata
     except Exception as e:
@@ -75,7 +75,7 @@ def get_delta(camera):
     return (camera["Expires"] - datetime.now(timezone.utc)).total_seconds()
 
 
-def handle_new_image(image):
+def handle_new_image(image, metadata):
     global IMAGE_ID
     global IMAGE_CV
     global IMAGE
@@ -94,7 +94,7 @@ def monitor_cameras(csv, resolution):
 
         height = 0
 
-        def get_height(content):
+        def get_height(content, metadata):
             nonlocal height
             with Image.open(BytesIO(content)) as image:
                 height = image.height
