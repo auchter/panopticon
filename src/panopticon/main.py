@@ -95,7 +95,6 @@ def monitor_cameras(resolution):
         url = cam["Screenshot Address"]
 
         height = 0
-
         def get_height(content, metadata):
             nonlocal height
             with Image.open(BytesIO(content)) as image:
