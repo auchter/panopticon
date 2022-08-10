@@ -153,19 +153,6 @@ def monitor_cameras(csv, resolution):
         time.sleep(3)
 
 
-def get_img():
-    global IMAGE_ID
-    global IMAGE_CV
-    global IMAGE
-    while True:
-        with IMAGE_CV:
-            yield b"\r\n".join(
-                [b"--frame", b"Content-Type: image/jpeg", b"", IMAGE, b""]
-            )
-            cur_id = IMAGE_ID
-            while cur_id == IMAGE_ID:
-                IMAGE_CV.wait()
-            logging.info(f"yielding new image! {cur_id}, {IMAGE_ID}")
 
 
 app = Flask(__name__)
@@ -183,6 +170,19 @@ def index():
 
 @app.route("/mjpeg")
 def mjpeg():
+    def get_img():
+        global IMAGE_ID
+        global IMAGE_CV
+        global IMAGE
+        while True:
+            with IMAGE_CV:
+                yield b"\r\n".join(
+                    [b"--frame", b"Content-Type: image/jpeg", b"", IMAGE, b""]
+                )
+                cur_id = IMAGE_ID
+                while cur_id == IMAGE_ID:
+                    IMAGE_CV.wait()
+                logging.info(f"yielding new image! {cur_id}, {IMAGE_ID}")
     return Response(get_img(), mimetype="multipart/x-mixed-replace;boundary=frame")
 
 
