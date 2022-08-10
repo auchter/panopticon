@@ -27,6 +27,7 @@ from pathlib import Path
 CAMERA_INFO = {}
 
 IMAGE_CV = threading.Condition()
+CAM_ID = 0
 IMAGE_ID = 0
 IMAGE = None
 
@@ -61,6 +62,7 @@ def request_image(cam_id, handler=None):
                 return None
 
             metadata = {}
+            metadata['cam_id'] = cam_id
             metadata["url"] = url
             metadata["ETag"] = r.headers["ETag"].strip('"')
             for key in ["Date", "Last-Modified", "Expires"]:
@@ -81,11 +83,13 @@ def get_delta(camera):
 
 def handle_new_image(image, metadata):
     global IMAGE_ID
+    global CAM_ID
     global IMAGE_CV
     global IMAGE
     with IMAGE_CV:
         IMAGE = image
         IMAGE_ID += 1
+        CAM_ID = metadata['cam_id']
         IMAGE_CV.notify_all()
 
 
