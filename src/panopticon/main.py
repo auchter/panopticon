@@ -23,6 +23,9 @@ from flask import Flask, Response
 from gevent.pywsgi import WSGIServer
 from pathlib import Path
 
+# Dictionary of info for all cameras
+CAMERA_INFO = {}
+
 IMAGE_CV = threading.Condition()
 IMAGE_ID = 0
 IMAGE = None
@@ -40,7 +43,7 @@ def load_cameras(csv_file):
             assert cam_id not in cam_dict
             assert cam["Screenshot Address"] != ""
             cam_dict[cam_id] = cam
-    return cam_dict.values()
+    return cam_dict
 
 
 def request_image(url, handler=None):
@@ -85,12 +88,11 @@ def handle_new_image(image, metadata):
         IMAGE_CV.notify_all()
 
 
-def monitor_cameras(csv, resolution):
-    all_cameras = load_cameras(csv)
+def monitor_cameras(resolution):
+    global CAMERA_INFO
     global CAMERAS
-    for cam in all_cameras:
+    for cam_id, cam in CAMERA_INFO.items():
         url = cam["Screenshot Address"]
-        cam_id = int(cam["Camera ID"])
 
         height = 0
 
@@ -217,12 +219,15 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(level=args.log.upper())
 
+    global CAMERA_INFO
+    CAMERA_INFO = load_cameras(args.cameras)
+
     global IMAGE
     with open(os.path.join(os.path.dirname(__file__), "init.jpg"), "rb") as f:
         IMAGE = f.read()
 
     mon_thread = threading.Thread(
-        target=monitor_cameras, args=(args.cameras, args.resolution)
+        target=monitor_cameras, args=(args.resolution, )
     )
     mon_thread.start()
 
