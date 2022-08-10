@@ -94,7 +94,6 @@ def handle_new_image(image, metadata):
 
 
 def monitor_cameras(resolution):
-    global CAMERA_INFO
     global CAMERAS
     for cam_id, cam in CAMERA_INFO.items():
         height = 0
@@ -171,9 +170,6 @@ def index():
 @app.route("/mjpeg")
 def mjpeg():
     def get_img():
-        global IMAGE_ID
-        global IMAGE_CV
-        global IMAGE
         while True:
             with IMAGE_CV:
                 yield b"\r\n".join(
