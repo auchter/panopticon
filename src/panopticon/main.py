@@ -153,10 +153,7 @@ def monitor_cameras(csv, resolution):
         time.sleep(3)
 
 
-
-
 app = Flask(__name__)
-
 
 @app.route("/")
 def index():
